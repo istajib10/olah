@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ritma Care Link - Layanan Kesehatan Mahasantri</title>
+
+    <script>
+        window.tailwind = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    screens: { 'xs': '380px' },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Times+New+Roman&display=swap" rel="stylesheet">
+
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        html, body {
+            overflow-x: hidden;
+            touch-action: manipulation;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .custom-scrollbar { -webkit-overflow-scrolling: touch; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            max-height: 260px;
+        }
+        @media (min-width: 640px) {
+            .chart-container { height: 260px; }
+        }
+
+        input, select, textarea {
+            font-size: 16px !important;
+        }
+        @media (min-width: 640px) {
+            input, select, textarea {
+                font-size: 0.875rem !important;
+            }
+        }
+
+        .font-official {
+            font-family: 'Times New Roman', Times, serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-teal-500 selection:text-white dark:bg-slate-900 dark:text-slate-100">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Kosongkan atau ganti dengan URL Web App Apps Script Anda
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxYcCkO3rg25UvWabFHkML7KX5neNFnMlX4rWc89d1ceDjQwB9SVuTX4T3XcODJCcrO/exec"; 
+
+        const getSectorByBuilding = (buildingName) => {
+            if (buildingName === "Gedung C") return "Putri";
+            return "Putra";
+        };
+
+        const INITIAL_ROOMS = [];
+        const INITIAL_SEBAT = [];
+        const INITIAL_STAFF = [];
+        const INITIAL_REQUESTS = [];
+
+        function App() {
+            const [currentView, setCurrentView] = useState("dashboard");
+            const [userRole, setUserRole] = useState(null);
+            const [currentMahasantri, setCurrentMahasantri] = useState(null);
+            const [isDarkMode, setIsDarkMode] = useState(() => {
+                const saved = localStorage.getItem('ritma_dark_mode');
+                return saved ? JSON.parse(saved) : false;
+            });
+            const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+            const [isSyncing, setIsSyncing] = useState(false);
+
+            const [rooms, setRooms] = useState(() => {
+                const saved = localStorage.getItem('ritma_rooms_26_27');
+                return saved ? JSON.parse(saved) : INITIAL_ROOMS;
+            });
+
+            const [medicines, setMedicines] = useState(() => {
+                const saved = localStorage.getItem('ritma_medicines_26_27');
+                return saved ? JSON.parse(saved) : INITIAL_SEBAT;
+            });
+
+            const [staff, setStaff] = useState(() => {
+                const saved = localStorage.getItem('ritma_staff_26_27');
+                return saved ? JSON.parse(saved) : INITIAL_STAFF;
+            });
+
+            const [requests, setRequests] = useState(() => {
+                const saved = localStorage.getItem('ritma_requests_26_27');
+                return saved ? JSON.parse(saved) : INITIAL_REQUESTS;
+            });
+
+            const [toast, setToast] = useState(null);
+            const [confirmModal, setConfirmModal] = useState(null);
+
+            useEffect(() => {
+                localStorage.setItem('ritma_rooms_26_27', JSON.stringify(rooms));
+            }, [rooms]);
+
+            useEffect(() => {
+                localStorage.setItem('ritma_medicines_26_27', JSON.stringify(medicines));
+            }, [medicines]);
+
+            useEffect(() => {
+                localStorage.setItem('ritma_staff_26_27', JSON.stringify(staff));
+            }, [staff]);
+
+            useEffect(() => {
+                localStorage.setItem('ritma_requests_26_27', JSON.stringify(requests));
+            }, [requests]);
+
+            useEffect(() => {
+                localStorage.setItem('ritma_dark_mode', JSON.stringify(isDarkMode));
+                if (isDarkMode) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            }, [isDarkMode]);
+
+            useEffect(() => {
+                syncWithGoogleSheets();
+            }, []);
+
+            const postToSheets = (action, payloadExtra = {}) => {
+                const targetUrl = GOOGLE_SCRIPT_URL || window.location.href;
+                const bodyData = JSON.stringify({ action: action, ...payloadExtra });
+
+                fetch(targetUrl, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: bodyData
+                }).catch(err => console.log("Background sync error:", err));
+            };
+
+            const toggleDarkMode = () => {
+                setIsDarkMode(prev => {
+                    const nextMode = !prev;
+                    if (nextMode) {
+                        document.documentElement.classList.add('dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                    }
+                    localStorage.setItem('ritma_dark_mode', JSON.stringify(nextMode));
+                    return nextMode;
+                });
+                showToast(`Mode ${!isDarkMode ? 'Gelap' : 'Terang'} Diaktifkan`, "info");
+            };
+
+            const showToast = (message, type = "success") => {
+                setToast({ message, type });
+                setTimeout(() => setToast(null), 3500);
+            };
+
+            const syncWithGoogleSheets = async () => {
+                setIsSyncing(true);
+                const targetUrl = GOOGLE_SCRIPT_URL || window.location.href;
+
+                try {
+                    const response = await fetch(`${targetUrl.split('?')[0]}?action=getAllData`, { method: "GET" });
+                    const result = await response.json();
+                    
+                    if (result && result.status === "success") {
+                        if (result.mahasantri && Array.isArray(result.mahasantri)) {
+                            const roomMap = {};
+                            result.mahasantri.forEach(item => {
+                                const bld = item.Gedung || "Gedung B";
+                                const rm = String(item.No_Kamar || "101");
+                                const key = `${bld}-${rm}`;
+                                if (!roomMap[key]) {
+                                    roomMap[key] = {
+                                        id: `RM-${bld.replace("Gedung ", "")}${rm}`,
+                                        building: bld,
+                                        roomNo: rm,
+                                        sector: item.Sektor || (bld === "Gedung C" ? "Putri" : "Putra"),
+                                        occupants: []
+                                    };
+                                }
+                                roomMap[key].occupants.push({
+                                    id: item.ID || `MHS-${Math.floor(1000 + Math.random() * 9000)}`,
+                                    nim: String(item.NIM || ""),
+                                    name: item.Nama || "Mahasantri",
+                                    fullName: item.Nama || "Mahasantri",
+                                    major: item.Jurusan || "-",
+                                    semester: item.Semester || "Semester 1",
+                                    status: item.Status || "Sehat",
+                                    symptom: item.Keluhan || "-"
+                                });
+                            });
+                            setRooms(Object.values(roomMap));
+                        }
+
+                        if (result.obat && Array.isArray(result.obat)) {
+                            setMedicines(result.obat.map(m => ({
+                                id: m.Kode || `OBT-${Math.floor(100 + Math.random() * 900)}`,
+                                name: m.Nama_Obat || "-",
+                                category: m.Kategori || "Apotek Putra",
+                                form: m.Satuan || "Tablet",
+                                stock: parseInt(m.Stok, 10) || 0,
+                                desc: m.Deskripsi || "",
+                                expiryDate: m.Exp_Date || ""
+                            })));
+                        }
+
+                        if (result.permintaan && Array.isArray(result.permintaan)) {
+                            setRequests(result.permintaan.map(r => ({
+                                id: r.ID_Order || `REQ-${Math.floor(100 + Math.random() * 900)}`,
+                                nim: String(r.NIM || ""),
+                                name: r.Nama || "",
+                                building: r.Gedung || "",
+                                roomNo: String(r.No_Kamar || ""),
+                                sector: r.Sektor || "",
+                                medicineName: r.Obat || "",
+                                qty: parseInt(r.Jumlah, 10) || 1,
+                                symptom: r.Keluhan || "-",
+                                date: r.Tanggal || "",
+                                status: r.Status || "Menunggu"
+                            })));
+                        }
+
+                        if (result.petugas && Array.isArray(result.petugas)) {
+                            setStaff(result.petugas.map(s => ({
+                                id: s.ID || `STF-${Math.floor(100 + Math.random() * 900)}`,
+                                name: s.Nama || "",
+                                role: s.Role || "Anggota ORKES",
+                                shift: s.Shift || "Shift Pagi",
+                                sector: s.Sektor || "Putra",
+                                phone: s.No_HP || "-",
+                                status: s.Status_Jaga || "Bertugas",
+                                avatarBg: s.Sektor === "Putri" ? "bg-pink-600" : "bg-teal-600"
+                            })));
+                        }
+
+                        showToast("Data disinkronkan dari Google Sheets!", "success");
+                    }
+                } catch (err) {
+                    console.log("Sync status:", err);
+                } finally {
+                    setIsSyncing(false);
+                }
+            };
+
+            const handleNimLogin = (nim, guestName) => {
+                let found = null;
+                rooms.forEach(r => {
+                    r.occupants.forEach(m => {
+                        if (m.nim.trim().toLowerCase() === nim.trim().toLowerCase()) {
+                            found = { ...m, building: r.building, roomNo: r.roomNo, sector: r.sector, fullName: m.fullName || m.name };
+                        }
+                    });
+                });
+
+                if (!found) {
+                    found = {
+                        id: `MHS-${Math.floor(1000 + Math.random() * 9000)}`,
+                        nim: nim.trim(),
+                        name: guestName.trim() || `Mahasantri (${nim})`,
+                        fullName: guestName.trim() || `Mahasantri (${nim})`,
+                        building: "Gedung B",
+                        roomNo: "101",
+                        sector: "Putra",
+                        major: "Mahasantri Ma'had",
+                        semester: "Semester 1",
+                        status: "Sehat",
+                        symptom: "-"
+                    };
+                }
+
+                setCurrentMahasantri(found);
+                setUserRole("mahasantri");
+
+                postToSheets('saveMahasantri', {
+                    payload: {
+                        ID: found.id,
+                        NIM: found.nim,
+                        Nama: found.fullName,
+                        Gedung: found.building,
+                        No_Kamar: found.roomNo,
+                        Status: found.status,
+                        Sektor: found.sector,
+                        Terakhir_Update: new Date().toISOString().split('T')[0]
+                    }
+                });
+
+                showToast(`Selamat datang, ${found.fullName}!`, "success");
+            };
+
+            const handleRegisterMahasantri = (data) => {
+                const newMhs = {
+                    id: `MHS-${Math.floor(1000 + Math.random() * 9000)}`,
+                    nim: data.nim,
+                    name: data.fullName,
+                    fullName: data.fullName,
+                    major: data.major,
+                    semester: data.semester,
+                    status: data.status,
+                    symptom: data.symptom,
+                    building: data.building,
+                    roomNo: data.roomNo,
+                    sector: data.sector
+                };
+
+                setRooms(prevRooms => {
+                    let roomExists = false;
+                    const updated = prevRooms.map(r => {
+                        if (r.building === data.building && r.roomNo === data.roomNo) {
+                            roomExists = true;
+                            return { ...r, occupants: [...r.occupants, newMhs] };
+                        }
+                        return r;
+                    });
+
+                    if (!roomExists) {
+                        updated.push({
+                            id: `RM-${data.building.replace("Gedung ", "")}${data.roomNo}`,
+                            building: data.building,
+                            roomNo: data.roomNo,
+                            sector: data.sector,
+                            occupants: [newMhs]
+                        });
+                    }
+                    return updated;
+                });
+
+                setCurrentMahasantri(newMhs);
+                setUserRole("mahasantri");
+
+                postToSheets('saveMahasantri', {
+                    payload: {
+                        ID: newMhs.id,
+                        NIM: newMhs.nim,
+                        Nama: newMhs.fullName,
+                        Gedung: newMhs.building,
+                        No_Kamar: newMhs.roomNo,
+                        Status: newMhs.status,
+                        Sektor: newMhs.sector,
+                        Terakhir_Update: new Date().toISOString().split('T')[0]
+                    }
+                });
+
+                showToast("Pendaftaran berhasil tersimpan!");
+            };
+
+            const handleAdminLogin = (password) => {
+                if (password === "orkes2026") {
+                    setUserRole("admin");
+                    showToast("Login Admin Berhasil!", "success");
+                    return true;
+                }
+                return false;
+            };
+
+            const handleLogout = () => {
+                setUserRole(null);
+                setCurrentMahasantri(null);
+                setCurrentView("dashboard");
+                showToast("Anda telah keluar dari sistem.", "info");
+            };
+
+            const handleResetAllToHealthy = () => {
+                setRooms(prev => prev.map(r => ({
+                    ...r,
+                    occupants: r.occupants.map(o => ({ ...o, status: "Sehat", symptom: "-" }))
+                })));
+                postToSheets('resetAllHealthy');
+                showToast("Seluruh status mahasantri disetel SEHAT!", "success");
+            };
+
+            const handleEditMahasantri = (mhsId, roomId, updatedMhsData, building, roomNo, sector) => {
+                setRooms(prev => prev.map(r => {
+                    if (r.id === roomId) {
+                        return {
+                            ...r,
+                            occupants: r.occupants.map(o => o.id === mhsId ? { ...o, ...updatedMhsData } : o)
+                        };
+                    }
+                    return r;
+                }));
+
+                postToSheets('saveMahasantri', {
+                    payload: {
+                        ID: mhsId,
+                        NIM: updatedMhsData.nim,
+                        Nama: updatedMhsData.fullName || updatedMhsData.name,
+                        Gedung: building,
+                        No_Kamar: roomNo,
+                        Status: updatedMhsData.status,
+                        Sektor: sector,
+                        Terakhir_Update: new Date().toISOString().split('T')[0]
+                    }
+                });
+
+                showToast("Data mahasantri diperbarui!");
+            };
+
+            const handleDeleteMahasantri = (roomId, mhsId, mhsName, nim) => {
+                setRooms(prev => prev.map(r => {
+                    if (r.id === roomId) {
+                        return { ...r, occupants: r.occupants.filter(o => o.id !== mhsId) };
+                    }
+                    return r;
+                }));
+
+                postToSheets('deleteRow', {
+                    sheetName: 'Mahasantri_Kamar',
+                    keyColumn: 'NIM',
+                    keyValue: nim
+                });
+
+                showToast(`Mahasantri ${mhsName} berhasil dihapus.`);
+            };
+
+            const handleAddMedicine = (newMed) => {
+                setMedicines([...medicines, newMed]);
+                postToSheets('saveObat', {
+                    payload: {
+                        Kode: newMed.id,
+                        Nama_Obat: newMed.name,
+                        Sektor: newMed.category.includes("Putri") ? "Putri" : "Putra",
+                        Kategori: newMed.category,
+                        Stok: newMed.stock,
+                        Satuan: newMed.form,
+                        Deskripsi: newMed.desc,
+                        Exp_Date: newMed.expiryDate
+                    }
+                });
+                showToast(`Obat ${newMed.name} tersimpan!`);
+            };
+
+            const handleEditMedicine = (updatedMed) => {
+                setMedicines(prev => prev.map(m => m.id === updatedMed.id ? updatedMed : m));
+                postToSheets('saveObat', {
+                    payload: {
+                        Kode: updatedMed.id,
+                        Nama_Obat: updatedMed.name,
+                        Sektor: updatedMed.category.includes("Putri") ? "Putri" : "Putra",
+                        Kategori: updatedMed.category,
+                        Stok: updatedMed.stock,
+                        Satuan: updatedMed.form,
+                        Deskripsi: updatedMed.desc,
+                        Exp_Date: updatedMed.expiryDate
+                    }
+                });
+                showToast(`Data obat ${updatedMed.name} diperbarui!`);
+            };
+
+            const handleDeleteMedicine = (medId, medName) => {
+                setMedicines(prev => prev.filter(m => m.id !== medId));
+                postToSheets('deleteRow', {
+                    sheetName: 'Stok_Obat',
+                    keyColumn: 'Kode',
+                    keyValue: medId
+                });
+                showToast(`Obat ${medName} berhasil dihapus.`);
+            };
+
+            const handleAddStaff = (newStaff) => {
+                setStaff([...staff, newStaff]);
+                postToSheets('savePetugas', {
+                    payload: {
+                        ID: newStaff.id,
+                        Nama: newStaff.name,
+                        Role: newStaff.role,
+                        No_HP: newStaff.phone,
+                        Shift: newStaff.shift,
+                        Sektor: newStaff.sector,
+                        Status_Jaga: newStaff.status
+                    }
+                });
+                showToast(`Petugas ${newStaff.name} tersimpan!`);
+            };
+
+            const handleEditStaff = (updatedStaff) => {
+                setStaff(prev => prev.map(s => s.id === updatedStaff.id ? updatedStaff : s));
+                postToSheets('savePetugas', {
+                    payload: {
+                        ID: updatedStaff.id,
+                        Nama: updatedStaff.name,
+                        Role: updatedStaff.role,
+                        No_HP: updatedStaff.phone,
+                        Shift: updatedStaff.shift,
+                        Sektor: updatedStaff.sector,
+                        Status_Jaga: updatedStaff.status
+                    }
+                });
+                showToast(`Data petugas ${updatedStaff.name} diperbarui!`);
+            };
+
+            const handleDeleteStaff = (staffId, staffName) => {
+                setStaff(prev => prev.filter(s => s.id !== staffId));
+                postToSheets('deleteRow', {
+                    sheetName: 'Petugas_ORKES',
+                    keyColumn: 'ID',
+                    keyValue: staffId
+                });
+                showToast(`Petugas ${staffName} berhasil dihapus.`);
+            };
+
+            const handleRequestMedicine = (medName, qty, symptom) => {
+                if (!currentMahasantri) return;
+                const newReq = {
+                    id: `REQ-${Math.floor(100 + Math.random() * 900)}`,
+                    nim: currentMahasantri.nim,
+                    name: currentMahasantri.fullName || currentMahasantri.name,
+                    building: currentMahasantri.building,
+                    roomNo: currentMahasantri.roomNo,
+                    sector: currentMahasantri.sector,
+                    medicineName: medName,
+                    qty: parseInt(qty, 10) || 1,
+                    symptom: symptom || "Keluhan kesehatan mahasantri",
+                    date: new Date().toLocaleDateString('id-ID'),
+                    status: "Menunggu"
+                };
+                
+                setRequests([newReq, ...requests]);
+
+                postToSheets('savePermintaan', {
+                    payload: {
+                        ID_Order: newReq.id,
+                        Tanggal: newReq.date,
+                        NIM: newReq.nim,
+                        Nama: newReq.name,
+                        Gedung: newReq.building,
+                        No_Kamar: newReq.roomNo,
+                        Obat: newReq.medicineName,
+                        Jumlah: newReq.qty,
+                        Keluhan: newReq.symptom,
+                        Status: newReq.status,
+                        Sektor: newReq.sector
+                    }
+                });
+
+                showToast(`Permintaan obat terkirim & tersimpan ke Sheets!`, "success");
+            };
+
+            const handleUpdateRequestStatus = (reqId, newStatus) => {
+                const reqItem = requests.find(r => r.id === reqId);
+                if (!reqItem) return;
+
+                if (newStatus === "Disetujui") {
+                    setMedicines(prevMeds => prevMeds.map(m => {
+                        if (m.name.toLowerCase().trim() === reqItem.medicineName.toLowerCase().trim() && m.stock >= reqItem.qty) {
+                            return { ...m, stock: m.stock - reqItem.qty };
+                        }
+                        return m;
+                    }));
+                }
+
+                setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: newStatus } : r));
+
+                postToSheets('savePermintaan', {
+                    payload: {
+                        ID_Order: reqItem.id,
+                        Tanggal: reqItem.date,
+                        NIM: reqItem.nim,
+                        Nama: reqItem.name,
+                        Gedung: reqItem.building,
+                        No_Kamar: reqItem.roomNo,
+                        Obat: reqItem.medicineName,
+                        Jumlah: reqItem.qty,
+                        Keluhan: reqItem.symptom,
+                        Status: newStatus,
+                        Sektor: reqItem.sector
+                    }
+                });
+
+                showToast(`Status permintaan ${reqId} diperbarui menjadi ${newStatus}`);
+            };
+
+            const handleDeleteRequest = (reqId) => {
+                setRequests(prev => prev.filter(r => r.id !== reqId));
+                postToSheets('deleteRow', {
+                    sheetName: 'Permintaan_Obat',
+                    keyColumn: 'ID_Order',
+                    keyValue: reqId
+                });
+                showToast(`Permintaan ${reqId} berhasil dihapus.`);
+            };
+
+            if (!userRole) {
+                return <AuthContainer 
+                            onNimLogin={handleNimLogin}
+                            onRegisterMahasantri={handleRegisterMahasantri} 
+                            onAdminLogin={handleAdminLogin} 
+                            isDarkMode={isDarkMode} 
+                            toggleDarkMode={toggleDarkMode} 
+                       />;
+            }
+
+            if (userRole === "mahasantri") {
+                return (
+                    <UserPortalLayout 
+                        mahasantri={currentMahasantri} 
+                        medicines={medicines} 
+                        staff={staff} 
+                        requests={requests.filter(r => String(r.nim).trim() === String(currentMahasantri.nim).trim())} 
+                        onRequestMedicine={handleRequestMedicine}
+                        onLogout={handleLogout}
+                        isDarkMode={isDarkMode}
+                        toggleDarkMode={toggleDarkMode}
+                        toast={toast}
+                    />
+                );
+            }
+
+            return (
+                <div className={`min-h-screen flex flex-col pb-20 md:pb-0 transition-colors duration-200 ${isDarkMode ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
+                    <header className={`sticky top-0 z-30 shadow-sm border-b transition-colors duration-200 ${isDarkMode ? 'bg-slate-800/95 border-slate-700 backdrop-blur-md' : 'bg-white/95 border-slate-200 backdrop-blur-md'}`}>
+                        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex justify-between items-center">
+                            <div className="flex items-center gap-2.5 sm:gap-3">
+                                <button 
+                                    onClick={() => setIsDrawerOpen(true)}
+                                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition active:scale-95 ${isDarkMode ? 'text-slate-300 hover:bg-slate-700 bg-slate-800' : 'text-slate-600 hover:bg-slate-100 bg-slate-50'}`}
+                                    aria-label="Buka Menu Sidebar"
+                                    title="Menu">
+                                    <i className="fa-solid fa-bars text-lg"></i>
+                                </button>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-teal-600 flex items-center justify-center text-white shadow-sm font-bold text-sm">
+                                        <i className="fa-solid fa-user-gear"></i>
+                                    </div>
+                                    <div className="leading-tight">
+                                        <div className="flex items-center gap-1.5">
+                                            <h1 className="font-bold text-sm sm:text-base">Ritma Care</h1>
+                                            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-500 border border-teal-500/30">ADMIN</span>
+                                        </div>
+                                        <p className="text-[10px] sm:text-[11px] text-teal-600 dark:text-teal-400 font-semibold truncate max-w-[170px] xs:max-w-none">Gedung B, C & D (2026/2027)</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 sm:gap-2.5">
+                                <button 
+                                    onClick={() => syncWithGoogleSheets()}
+                                    disabled={isSyncing}
+                                    className="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 active:scale-95"
+                                    title="Klik untuk menyinkronkan data dengan Google Sheets">
+                                    <i className={`fa-solid fa-rotate ${isSyncing ? 'fa-spin' : ''}`}></i>
+                                    <span>Sinkron Database</span>
+                                </button>
+
+                                {requests.filter(r => r.status === 'Menunggu').length > 0 && (
+                                    <button 
+                                        onClick={() => setCurrentView("requests")}
+                                        className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-500 border border-amber-500/40 animate-pulse">
+                                        <i className="fa-solid fa-bell text-xs"></i>
+                                        <span className="hidden xs:inline">{requests.filter(r => r.status === 'Menunggu').length}</span>
+                                    </button>
+                                )}
+                                
+                                <button
+                                    onClick={toggleDarkMode}
+                                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm border transition-all active:scale-95 ${isDarkMode ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-amber-50 text-amber-600 border-amber-200'}`}
+                                    aria-label="Toggle Mode Gelap">
+                                    <i className={`fa-solid ${isDarkMode ? 'fa-sun text-amber-300' : 'fa-moon text-slate-700'}`}></i>
+                                </button>
+
+                                <button 
+                                    onClick={handleLogout}
+                                    className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 text-xs font-bold transition flex items-center gap-1.5 active:scale-95"
+                                    title="Keluar">
+                                    <i className="fa-solid fa-power-off"></i>
+                                    <span className="hidden sm:inline">Keluar</span>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {isDrawerOpen && (
+                        <div className="fixed inset-0 z-50 flex">
+                            <div 
+                                className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity" 
+                                onClick={() => setIsDrawerOpen(false)}></div>
+
+                            <div className={`relative w-[85%] max-w-xs h-full shadow-2xl flex flex-col justify-between z-10 transition-transform duration-300 ${isDarkMode ? 'bg-slate-800 text-slate-100 border-r border-slate-700' : 'bg-white text-slate-800'}`}>
+                                <div className="overflow-y-auto custom-scrollbar">
+                                    <div className={`p-4 border-b flex justify-between items-center ${isDarkMode ? 'border-slate-700' : 'border-slate-100'}`}>
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 text-white flex items-center justify-center font-bold shadow-md">
+                                                <i className="fa-solid fa-hand-holding-medical text-lg"></i>
+                                            </div>
+                                            <div>
+                                                <h2 className="font-bold text-sm bg-gradient-to-r from-teal-600 to-emerald-500 bg-clip-text text-transparent">Ritma Care Admin</h2>
+                                                <p className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold">Asrama Terpadu B, C & D</p>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => setIsDrawerOpen(false)}
+                                            className={`w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90 ${isDarkMode ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+                                            <i className="fa-solid fa-xmark text-lg"></i>
+                                        </button>
+                                    </div>
+
+                                    <div className="p-3 space-y-1.5">
+                                        <p className="px-3 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">MENU UTAMA</p>
+
+                                        {[
+                                            { id: "dashboard", icon: "fa-gauge-high", label: "Dashboard Ringkasan", sub: "Monitoring Kesehatan", color: "from-teal-500 to-emerald-600", iconBg: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20" },
+                                            { id: "requests", icon: "fa-clipboard-check", label: "Permintaan Obat", sub: `${requests.filter(r => r.status === 'Menunggu').length} Menunggu`, badge: requests.filter(r => r.status === 'Menunggu').length, color: "from-amber-500 to-orange-600", iconBg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" },
+                                            { id: "cekmar", icon: "fa-door-open", label: "Data Kamar & MHS", sub: "Gedung B, C & D", color: "from-indigo-500 to-blue-600", iconBg: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20" },
+                                            { id: "sebat", icon: "fa-pills", label: "Stok Sediaan Obat", sub: "Apotek Putra & Putri", color: "from-pink-500 to-rose-600", iconBg: "bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/20" },
+                                            { id: "reports", icon: "fa-file-signature", label: "Laporan & Surat Resmi", sub: "Harian, Mingguan, Semesteran", color: "from-sky-500 to-cyan-600", iconBg: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20" },
+                                            { id: "staff", icon: "fa-user-shield", label: "Jadwal Tim ORKES", sub: "Petugas Piket & Shift", color: "from-purple-500 to-indigo-600", iconBg: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20" }
+                                        ].map(item => (
+                                            <button 
+                                                key={item.id}
+                                                onClick={() => { setCurrentView(item.id); setIsDrawerOpen(false); }}
+                                                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl font-semibold text-sm transition-all active:scale-[0.98] ${
+                                                    currentView === item.id 
+                                                        ? `bg-gradient-to-r ${item.color} text-white shadow-lg shadow-teal-500/20` 
+                                                        : isDarkMode 
+                                                            ? 'text-slate-300 hover:bg-slate-700/60' 
+                                                            : 'text-slate-700 hover:bg-slate-100'
+                                                }`}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${currentView === item.id ? 'bg-white/20 text-white' : item.iconBg}`}>
+                                                        <i className={`fa-solid ${item.icon} text-base`}></i>
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <div className="leading-tight text-xs sm:text-sm">{item.label}</div>
+                                                        <span className={`text-[10px] font-normal ${currentView === item.id ? 'text-white/80' : 'text-slate-400'}`}>{item.sub}</span>
+                                                    </div>
+                                                </div>
+                                                {item.badge > 0 && (
+                                                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500 text-slate-950 font-extrabold animate-pulse">
+                                                        {item.badge}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className={`p-3 border-t ${isDarkMode ? 'border-slate-700' : 'border-slate-100'}`}>
+                                    <button 
+                                        onClick={handleLogout}
+                                        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs text-red-500 hover:bg-red-500/10 transition active:scale-95">
+                                        <div className="w-8 h-8 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500">
+                                            <i className="fa-solid fa-arrow-right-from-bracket text-base"></i>
+                                        </div>
+                                        <span>Keluar Dari Sistem</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {toast && (
+                        <div className="fixed bottom-20 md:bottom-5 left-4 right-4 md:left-auto md:right-5 z-50 animate-bounce">
+                            <div className={`px-4 py-3 rounded-2xl shadow-2xl text-white font-semibold flex items-center gap-3 text-xs sm:text-sm ${toast.type === 'info' ? 'bg-blue-600' : toast.type === 'error' ? 'bg-red-600' : 'bg-teal-600'}`}>
+                                <i className={`fa-solid ${toast.type === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-check'} text-base`}></i>
+                                <span className="flex-1 leading-snug">{toast.message}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {confirmModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setConfirmModal(null)}></div>
+                            <div className={`relative w-full max-w-sm p-6 rounded-3xl shadow-2xl z-10 text-center space-y-4 ${isDarkMode ? 'bg-slate-800 text-slate-100 border border-slate-700' : 'bg-white text-slate-800'}`}>
+                                <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto text-xl">
+                                    <i className="fa-solid fa-triangle-exclamation"></i>
+                                </div>
+                                <h3 className="font-bold text-base">{confirmModal.title || "Konfirmasi Tindakan"}</h3>
+                                <p className={`text-xs ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>{confirmModal.message}</p>
+                                <div className="flex gap-2 pt-2">
+                                    <button 
+                                        onClick={() => setConfirmModal(null)}
+                                        className={`flex-1 py-2.5 font-bold rounded-xl text-xs transition border active:scale-95 ${isDarkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200 border-slate-600' : 'bg-slate-200 hover:bg-slate-300 text-slate-700 border-slate-300'}`}>
+                                        Batal
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            confirmModal.onConfirm();
+                                            setConfirmModal(null);
+                                        }}
+                                        className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs shadow active:scale-95">
+                                        Ya, Lanjutkan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 md:p-6 space-y-5 sm:space-y-6">
+                        {currentView === "dashboard" && (
+                            <DashboardView rooms={rooms} medicines={medicines} staff={staff} requests={requests} isDarkMode={isDarkMode} setCurrentView={setCurrentView} />
+                        )}
+
+                        {currentView === "requests" && (
+                            <AdminRequestsView 
+                                requests={requests} 
+                                onUpdateRequestStatus={handleUpdateRequestStatus} 
+                                onDeleteRequest={handleDeleteRequest}
+                                setConfirmModal={setConfirmModal}
+                                isDarkMode={isDarkMode} 
+                            />
+                        )}
+
+                        {currentView === "cekmar" && (
+                            <CekmarView 
+                                rooms={rooms} 
+                                setRooms={setRooms} 
+                                onEditMahasantri={handleEditMahasantri}
+                                onDeleteMahasantri={handleDeleteMahasantri}
+                                onResetAllToHealthy={handleResetAllToHealthy}
+                                setConfirmModal={setConfirmModal}
+                                showToast={showToast} 
+                                isDarkMode={isDarkMode} 
+                            />
+                        )}
+
+                        {currentView === "sebat" && (
+                            <SebatView 
+                                medicines={medicines} 
+                                onAddMedicine={handleAddMedicine}
+                                onEditMedicine={handleEditMedicine}
+                                onDeleteMedicine={handleDeleteMedicine}
+                                setConfirmModal={setConfirmModal}
+                                showToast={showToast} 
+                                isDarkMode={isDarkMode} 
+                            />
+                        )}
+
+                        {currentView === "reports" && (
+                            <ReportsView 
+                                rooms={rooms} 
+                                medicines={medicines} 
+                                requests={requests} 
+                                staff={staff}
+                                showToast={showToast} 
+                                isDarkMode={isDarkMode} 
+                            />
+                        )}
+
+                        {currentView === "staff" && (
+                            <StaffView 
+                                staff={staff} 
+                                onAddStaff={handleAddStaff}
+                                onEditStaff={handleEditStaff}
+                                onDeleteStaff={handleDeleteStaff}
+                                setConfirmModal={setConfirmModal}
+                                showToast={showToast} 
+                                isDarkMode={isDarkMode} 
+                            />
+                        )}
+                    </main>
+
+                    <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-40 border-t flex justify-around items-center px-1 py-1.5 transition-colors shadow-lg ${isDarkMode ? 'bg-slate-800/95 border-slate-700 backdrop-blur-md' : 'bg-white/95 border-slate-200 backdrop-blur-md'}`}>
+                        {[
+                            { id: "dashboard", icon: "fa-gauge-high", label: "Beranda" },
+                            { id: "cekmar", icon: "fa-door-open", label: "Kamar" },
+                            { id: "requests", icon: "fa-clipboard-check", label: "Permintaan", badge: requests.filter(r => r.status === 'Menunggu').length },
+                            { id: "sebat", icon: "fa-pills", label: "Obat" },
+                            { id: "reports", icon: "fa-file-signature", label: "Surat/Lap" }
+                        ].map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setCurrentView(tab.id)}
+                                className={`relative flex flex-col items-center justify-center py-1 px-2 rounded-xl transition active:scale-90 ${currentView === tab.id ? 'text-teal-600 dark:text-teal-400 font-extrabold' : 'text-slate-400 dark:text-slate-500 font-medium'}`}>
+                                <div className="relative">
+                                    <i className={`fa-solid ${tab.icon} text-lg mb-0.5`}></i>
+                                    {tab.badge > 0 && (
+                                        <span className="absolute -top-1 -right-2 w-4 h-4 bg-amber-500 text-slate-950 rounded-full text-[9px] font-black flex items-center justify-center animate-pulse">
+                                            {tab.badge}
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="text-[10px] leading-tight">{tab.label}</span>
+                            </button>
+                        ))}
+                    </nav>
+
+                    <footer className={`hidden md:block border-t py-4 text-center text-xs transition-colors duration-200 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-white border-slate-200 text-slate-500'} mt-auto`}>
+                        <div className="max-w-7xl mx-auto px-4">
+                            © 2026 Ritma Care Link · Layanan Kesehatan Mahasantri Ma'had Tahfizh Al-Quran UIN Sunan Gunung Djati Bandung
+                        </div>
+                    </footer>
+                </div>
+            );
+        }
+
+        function AuthContainer({ onNimLogin, onRegisterMahasantri, onAdminLogin, isDarkMode, toggleDarkMode }) {
+            const [activeMainTab, setActiveMainTab] = useState("mahasantri");
+            const [mahasantriMode, setMahasantriMode] = useState("login");
+
+            return (
+                <div className={`min-h-screen flex flex-col justify-between items-center p-3 sm:p-6 transition-colors duration-200 ${isDarkMode ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
+                    <div className="w-full max-w-xl flex justify-between items-center pt-2">
+                        <div className="flex items-center gap-2">
+                            <div className="w-9 h-9 rounded-xl bg-teal-600 flex items-center justify-center text-white text-base shadow-md font-bold">
+                                <i className="fa-solid fa-heart-pulse"></i>
+                            </div>
+                            <span className="font-bold text-base sm:text-lg">Ritma Care Link</span>
+                        </div>
+                        
+                        <button
+                            onClick={toggleDarkMode}
+                            className={`w-9 h-9 rounded-xl border flex items-center justify-center transition active:scale-95 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-amber-300' : 'bg-white border-slate-200 text-slate-700'}`}>
+                            <i className={`fa-solid ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
+                        </button>
+                    </div>
+
+                    <div className={`w-full max-w-xl my-4 sm:my-auto p-4 sm:p-8 rounded-3xl border shadow-xl transition-colors ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'}`}>
+                        <div className={`p-1.5 rounded-2xl flex gap-1 mb-5 sm:mb-6 ${isDarkMode ? 'bg-slate-900' : 'bg-slate-100'}`}>
+                            <button
+                                onClick={() => setActiveMainTab("mahasantri")}
+                                className={`flex-1 py-2.5 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 sm:gap-2 ${activeMainTab === 'mahasantri' ? 'bg-teal-600 text-white shadow-md' : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>
+                                <i className="fa-solid fa-user-graduate"></i>
+                                <span>Portal Mahasantri</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveMainTab("admin")}
+                                className={`flex-1 py-2.5 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 sm:gap-2 ${activeMainTab === 'admin' ? 'bg-teal-600 text-white shadow-md' : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>
+                                <i className="fa-solid fa-user-shield"></i>
+                                <span>Login Pengurus</span>
+                            </button>
+                        </div>
+
+                        {activeMainTab === "mahasantri" ? (
+                            <div>
+                                <div className="flex items-center justify-between border-b pb-3 mb-4 sm:mb-5 dark:border-slate-700">
+                                    <div className="flex gap-1.5 sm:gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setMahasantriMode("login")}
+                                            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${mahasantriMode === 'login' ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' : 'text-slate-400 hover:text-slate-600'}`}>
+                                            <i className="fa-solid fa-id-card"></i>
+                                            <span>Masuk NIM</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setMahasantriMode("register")}
+                                            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${mahasantriMode === 'register' ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' : 'text-slate-400 hover:text-slate-600'}`}>
+                                            <i className="fa-solid fa-user-plus"></i>
+                                            <span>Daftar Baru</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {mahasantriMode === "login" ? (
+                                    <MahasantriNimLogin 
+                                        onLogin={onNimLogin} 
+                                        onSwitchToRegister={() => setMahasantriMode("register")}
+                                        isDarkMode={isDarkMode} 
+                                    />
+                                ) : (
+                                    <MahasantriRegisterForm 
+                                        onSubmit={onRegisterMahasantri} 
+                                        onSwitchToLogin={() => setMahasantriMode("login")}
+                                        isDarkMode={isDarkMode} 
+                                    />
+                                )}
+                            </div>
+                        ) : (
+                            <AdminLoginForm onSubmit={onAdminLogin} isDarkMode={isDarkMode} />
+                        )}
+                    </div>
+
+                    <div className="text-center text-[11px] text-slate-400 pb-2">
+                        © 2026 Ritma Care Link · Layanan Kesehatan Mahasantri Integrated
+                    </div>
+                </div>
+            );
+        }
+
+        function MahasantriNimLogin({ onLogin, onSwitchToRegister, isDarkMode }) {
+            const [nim, setNim] = useState("");
+            const [guestName, setGuestName] = useState("");
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!nim.trim()) return;
+                onLogin(nim.trim(), guestName);
+            };
+
+            return (
+                <div className="space-y-4 sm:space-y-5">
+                    <div className="text-left space-y-1">
+                        <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-ping"></span>
+                            <h2 className="text-lg sm:text-xl font-bold">Masuk Portal Mahasantri</h2>
+                        </div>
+                        <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Masukkan <strong>NIM</strong> Anda untuk langsung memesan obat & melihat informasi petugas.
+                        </p>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="space-y-3.5">
+                        <div className="space-y-1">
+                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Nomor Induk Mahasantri (NIM) *</label>
+                            <input 
+                                type="text"
+                                required
+                                value={nim}
+                                onChange={(e) => setNim(e.target.value)}
+                                placeholder="Contoh: 1247050001" 
+                                className={`w-full px-3 py-3 border rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 transition ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
+                            />
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Nama Mahasantri (Opsional)</label>
+                            <input 
+                                type="text"
+                                value={guestName}
+                                onChange={(e) => setGuestName(e.target.value)}
+                                placeholder="Masukkan nama Anda..." 
+                                className={`w-full px-3 py-3 border rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 transition ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
+                            />
+                        </div>
+
+                        <button 
+                            type="submit"
+                            className="w-full py-3 px-4 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm active:scale-95">
+                            <i className="fa-solid fa-arrow-right-to-bracket"></i>
+                            <span>Masuk Portal</span>
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+
+        function MahasantriRegisterForm({ onSubmit, onSwitchToLogin, isDarkMode }) {
+            const [fullName, setFullName] = useState("");
+            const [nim, setNim] = useState("");
+            const [building, setBuilding] = useState("Gedung B");
+            const [roomNo, setRoomNo] = useState("");
+            const [semester, setSemester] = useState("Semester 1");
+            const [major, setMajor] = useState("");
+            const [symptom, setSymptom] = useState("");
+            const [status, setStatus] = useState("Sehat");
+
+            const sector = getSectorByBuilding(building);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!fullName || !nim || !roomNo || !major) return;
+                onSubmit({
+                    fullName,
+                    nim: nim.trim(),
+                    building,
+                    roomNo,
+                    sector,
+                    semester: semester || "Semester 1",
+                    major,
+                    symptom: symptom || "-",
+                    status
+                });
+            };
+
+            return (
+                <form onSubmit={handleSubmit} className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Nama Lengkap *</label>
+                            <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Ahmad Zaky" className={`w-full px-3 py-2.5 border rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>NIM *</label>
+                            <input type="text" required value={nim} onChange={(e) => setNim(e.target.value)} placeholder="1247050001" className={`w-full px-3 py-2.5 border rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 xs:grid-cols-3 gap-2.5">
+                        <div className="space-y-1">
+                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Gedung *</label>
+                            <select value={building} onChange={(e) => setBuilding(e.target.value)} className={`w-full px-2.5 py-2.5 border rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`}>
+                                <option value="Gedung B">Gedung B (Putra)</option>
+                                <option value="Gedung C">Gedung C (Putri)</option>
+                                <option value="Gedung D">Gedung D (Putra)</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Sektor</label>
+                            <input type="text" disabled value={`Sektor ${sector}`} className={`w-full px-2.5 py-2.5 border rounded-xl font-bold opacity-80 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-teal-400' : 'bg-slate-100 border-slate-200 text-teal-600'}`} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>No. Kamar *</label>
+                            <input type="text" required value={roomNo} onChange={(e) => setRoomNo(e.target.value)} placeholder="101" className={`w-full px-2.5 py-2.5 border rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Jurusan / Prodi *</label>
+                            <input type="text" required value={major} onChange={(e) => setMajor(e.target.value)} placeholder="Teknik Informatika" className={`w-full px-3 py-2.5 border rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Status Kesehatan</label>
+                            <select value={status} onChange={(e) => setStatus(e.target.value)} className={`w-full px-3 py-2.5 border rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`}>
+                                <option value="Sehat">🟢 Sehat Bugar</option>
+                                <option value="Sakit Ringan">🟡 Sakit Ringan</option>
+                                <option value="Sakit Parah">🔴 Sakit Parah</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" className="w-full py-3 px-4 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm mt-2 active:scale-95">
+                        <i className="fa-solid fa-user-check"></i>
+                        <span>Daftarkan & Simpan Ke Spreadsheet</span>
+                    </button>
+                </form>
+            );
+        }
+
+        function AdminLoginForm({ onSubmit, isDarkMode }) {
+            const [username, setUsername] = useState("");
+            const [password, setPassword] = useState("");
+            const [errorMsg, setErrorMsg] = useState("");
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                setErrorMsg("");
+                const success = onSubmit(password);
+                if (!success) {
+                    setErrorMsg("Password salah! (Default: orkes2026)");
+                }
+            };
+
+            return (
+                <form onSubmit={handleSubmit} className="space-y-3.5">
+                    {errorMsg && (
+                        <div className="p-3 rounded-xl bg-red-500/10 text-red-500 text-xs font-bold flex items-center gap-2">
+                            <i className="fa-solid fa-circle-exclamation"></i>
+                            <span>{errorMsg}</span>
+                        </div>
+                    )}
+                    <div className="space-y-1">
+                        <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>USERNAME ADMIN</label>
+                        <input type="text" required value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username admin" className={`w-full px-3 py-3 border rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                    </div>
+                    <div className="space-y-1">
+                        <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>PASSWORD</label>
+                        <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={`w-full px-3 py-3 border rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`} />
+                    </div>
+                    <button type="submit" className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm active:scale-95">
+                        <i className="fa-solid fa-right-to-bracket"></i>
+                        <span>Masuk Sebagai Admin</span>
+                    </button>
+                </form>
+            );
+        }
+
+        function UserPortalLayout({ mahasantri, medicines, staff, requests, onRequestMedicine, onLogout, isDarkMode, toggleDarkMode, toast }) {
+            const [selectedMed, setSelectedMed] = useState(null);
+            const [reqQty, setReqQty] = useState(1);
+            const [reqSymptom, setReqSymptom] = useState("");
+            const [activeTab, setActiveTab] = useState("obat");
+            const [searchTerm, setSearchTerm] = useState("");
+
+            const availableMeds = medicines.filter(m => m.stock > 0);
+            const filteredMeds = availableMeds.filter(m => 
+                m.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                m.form.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            // TAUTAN LANGSUNG KE WHATSAPP +62 857-7609-1473
+            const handleConfirmRequest = (e) => {
+                e.preventDefault();
+                if (!selectedMed) return;
+                
+                // 1. Simpan ke sistem
+                onRequestMedicine(selectedMed.name, reqQty, reqSymptom);
+
+                // 2. Format pesan dan buka aplikasi WhatsApp
+                const targetNumber = "6285776091473";
+                const messageText = `Assalamu'alaikum Admin ORKES Poskes Ma'had Tahfizh UIN Bandung,\n\nSaya mengajukan permohonan obat via Ritma Care Link:\n\n📌 *Data Mahasantri:*\n• Nama: ${mahasantri.fullName || mahasantri.name}\n• NIM: ${mahasantri.nim}\n• Lokasi: ${mahasantri.building} - Kamar ${mahasantri.roomNo} (Sektor ${mahasantri.sector || 'Putra'})\n\n💊 *Detail Pesanan Obat:*\n• Nama Obat: ${selectedMed.name}\n• Jumlah: ${reqQty} ${selectedMed.form || 'Pcs'}\n• Keluhan/Gejala: ${reqSymptom}\n\nMohon diproses. Terima kasih!`;
+
+                const waUrl = `https://wa.me/${targetNumber}?text=${encodeURIComponent(messageText)}`;
+                window.open(waUrl, '_blank');
+
+                setSelectedMed(null);
+                setReqQty(1);
+                setReqSymptom("");
+            };
+
+            const directWaUrl = `https://wa.me/6285776091473?text=${encodeURIComponent(`Halo Admin ORKES, saya ${mahasantri.fullName || mahasantri.name} (${mahasantri.nim}) ingin berkonsultasi mengenai kesehatan / pemesanan obat.`)}`;
+
+            return (
+                <div className={`min-h-screen flex flex-col pb-16 md:pb-0 transition-colors duration-200 ${isDarkMode ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
+                    <header className={`sticky top-0 z-30 shadow-sm border-b transition-colors duration-200 ${isDarkMode ? 'bg-slate-800/95 border-slate-700 backdrop-blur-md' : 'bg-white/95 border-slate-200 backdrop-blur-md'}`}>
+                        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 flex justify-between items-center">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-base shadow-md">
+                                    <i className="fa-solid fa-heart-pulse"></i>
+                                </div>
+                                <div>
+                                    <h1 className="font-bold text-sm sm:text-base leading-tight">Ritma Care</h1>
+                                    <p className="text-[10px] sm:text-xs text-teal-500 font-semibold">UIN Sunan Gunung Djati Bandung</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <a 
+                                    href={directWaUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-2.5 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-xs font-bold transition flex items-center gap-1.5 border border-emerald-500/20 active:scale-95">
+                                    <i className="fa-brands fa-whatsapp text-sm text-emerald-500"></i>
+                                    <span className="hidden xs:inline">WA Admin (+6285776091473)</span>
+                                </a>
+
+                                <button onClick={toggleDarkMode} className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm border ${isDarkMode ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                                    <i className={`fa-solid ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
+                                </button>
+                                <button onClick={onLogout} className="px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 text-xs font-bold transition flex items-center gap-1.5">
+                                    <i className="fa-solid fa-power-off"></i>
+                                    <span>Keluar</span>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-6">
+                        <div className={`p-4 sm:p-5 rounded-3xl border shadow-sm ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-2xl bg-teal-600 flex items-center justify-center text-white text-xl font-bold">
+                                        <i className="fa-solid fa-user-graduate"></i>
+                                    </div>
+                                    <div>
+                                        <h2 className="text-base sm:text-xl font-bold">{mahasantri.fullName || mahasantri.name}</h2>
+                                        <p className="text-xs text-slate-400">{mahasantri.building} - Kamar {mahasantri.roomNo} · NIM: {mahasantri.nim}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex border-b border-slate-200 dark:border-slate-700 gap-2 overflow-x-auto">
+                            <button onClick={() => setActiveTab("obat")} className={`py-2.5 px-3 font-bold text-xs sm:text-sm border-b-2 ${activeTab === 'obat' ? 'border-teal-500 text-teal-500' : 'border-transparent text-slate-400'}`}>Pesan Obat (Hit Order)</button>
+                            <button onClick={() => setActiveTab("history")} className={`py-2.5 px-3 font-bold text-xs sm:text-sm border-b-2 ${activeTab === 'history' ? 'border-teal-500 text-teal-500' : 'border-transparent text-slate-400'}`}>Riwayat Order ({requests.length})</button>
+                        </div>
+
+                        {activeTab === "obat" && (
+                            <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {filteredMeds.map(med => (
+                                    <div key={med.id} className={`p-4 rounded-2xl border shadow-sm space-y-3 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                        <div className="flex justify-between items-start">
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-500/10 text-teal-500">{med.category}</span>
+                                            <span className="text-xs font-bold text-emerald-500">Stok: {med.stock}</span>
+                                        </div>
+                                        <h4 className="font-bold text-sm sm:text-base">{med.name}</h4>
+                                        <button onClick={() => setSelectedMed(med)} className="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5">
+                                            <i className="fa-solid fa-paper-plane"></i>
+                                            <span>Hit Order (Pesan + WA)</span>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {activeTab === "history" && (
+                            <div className={`rounded-2xl border overflow-hidden ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                <table className="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr className="border-b font-bold bg-slate-100 dark:bg-slate-900">
+                                            <th className="p-3">ID Order</th>
+                                            <th className="p-3">Obat</th>
+                                            <th className="p-3">Jumlah</th>
+                                            <th className="p-3">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                        {requests.map(req => (
+                                            <tr key={req.id}>
+                                                <td className="p-3 font-mono font-bold text-teal-500">{req.id}</td>
+                                                <td className="p-3 font-bold">{req.medicineName}</td>
+                                                <td className="p-3">{req.qty}</td>
+                                                <td className="p-3 font-bold text-emerald-500">{req.status}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </main>
+
+                    {selectedMed && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setSelectedMed(null)}></div>
+                            <div className={`relative w-full max-w-md p-6 rounded-3xl shadow-2xl z-10 space-y-4 ${isDarkMode ? 'bg-slate-800 text-slate-100 border border-slate-700' : 'bg-white text-slate-800'}`}>
+                                <h3 className="font-bold text-base">Pesan {selectedMed.name}</h3>
+                                <p className="text-xs text-emerald-500 font-semibold">Pesanan akan tersimpan dan otomatis meneruskan pesan ke WhatsApp Admin (+6285776091473).</p>
+                                <form onSubmit={handleConfirmRequest} className="space-y-3 text-xs">
+                                    <div>
+                                        <label className="font-bold uppercase">Jumlah Diminta</label>
+                                        <input type="number" min="1" max={selectedMed.stock} value={reqQty} onChange={(e) => setReqQty(e.target.value)} className={`w-full p-2.5 border rounded-xl font-bold ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`} required />
+                                    </div>
+                                    <div>
+                                        <label className="font-bold uppercase">Keluhan / Gejala</label>
+                                        <textarea rows="2" value={reqSymptom} onChange={(e) => setReqSymptom(e.target.value)} placeholder="Tuliskan keluhan atau gejala yang dirasakan..." className={`w-full p-2.5 border rounded-xl font-bold ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200'}`} required></textarea>
+                                    </div>
+                                    <div className="flex gap-2 pt-2">
+                                        <button type="button" onClick={() => setSelectedMed(null)} className="flex-1 py-2.5 font-bold rounded-xl border">Batal</button>
+                                        <button type="submit" className="flex-1 py-2.5 bg-emerald-600 text-white font-bold rounded-xl flex items-center justify-center gap-2">
+                                            <i className="fa-brands fa-whatsapp text-sm"></i>
+                                            <span>Hit Order & Kirim WA</span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function DashboardView({ rooms, medicines, staff, requests, isDarkMode }) {
+            const chartBuildingRef = useRef(null);
+            const chartStockRef = useRef(null);
+            const [stockSector, setStockSector] = useState("Putra");
+
+            let bldSick = { "Gedung B": 0, "Gedung C": 0, "Gedung D": 0 };
+            let totalSick = 0;
+            let totalMahasantri = 0;
+
+            rooms.forEach(r => {
+                const bName = r.building in bldSick ? r.building : "Gedung B";
+                r.occupants.forEach(mhs => {
+                    totalMahasantri++;
+                    if (mhs.status !== "Sehat") {
+                        bldSick[bName]++;
+                        totalSick++;
+                    }
+                });
+            });
+
+            const bldBPercent = totalSick > 0 ? Math.round((bldSick["Gedung B"] / totalSick) * 100) : 0;
+            const bldCPercent = totalSick > 0 ? Math.round((bldSick["Gedung C"] / totalSick) * 100) : 0;
+            const bldDPercent = totalSick > 0 ? Math.round((bldSick["Gedung D"] / totalSick) * 100) : 0;
+
+            useEffect(() => {
+                if (!window.Chart) return;
+
+                let buildingChartInstance = null;
+                let stockChartInstance = null;
+
+                const labelColor = isDarkMode ? '#cbd5e1' : '#334155';
+                const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
+
+                if (chartBuildingRef.current) {
+                    const ctxB = chartBuildingRef.current.getContext('2d');
+                    buildingChartInstance = new window.Chart(ctxB, {
+                        type: 'doughnut',
+                        data: {
+                            labels: [`Gedung B (${bldBPercent}%)`, `Gedung C (${bldCPercent}%)`, `Gedung D (${bldDPercent}%)`],
+                            datasets: [{
+                                data: [bldSick["Gedung B"], bldSick["Gedung C"], bldSick["Gedung D"]],
+                                backgroundColor: ['#0d9488', '#ec4899', '#6366f1'],
+                                borderWidth: 3,
+                                borderColor: isDarkMode ? '#1e293b' : '#ffffff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: '68%',
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: { color: labelColor, font: { size: 11, weight: 'bold' } }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                if (chartStockRef.current) {
+                    const ctxStock = chartStockRef.current.getContext('2d');
+                    const targetCategory = stockSector === "Putra" ? "Apotek Putra" : "Apotek Putri";
+                    const filteredMeds = medicines.filter(m => m.category === targetCategory);
+
+                    stockChartInstance = new window.Chart(ctxStock, {
+                        type: 'bar',
+                        data: {
+                            labels: filteredMeds.map(m => m.name.length > 12 ? m.name.substring(0, 10) + '..' : m.name),
+                            datasets: [{
+                                label: 'Stok',
+                                data: filteredMeds.map(m => m.stock),
+                                backgroundColor: stockSector === "Putra" ? '#6366f1' : '#ec4899',
+                                borderRadius: 8
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { ticks: { color: labelColor }, grid: { color: gridColor }, beginAtZero: true },
+                                x: { ticks: { color: labelColor }, grid: { display: false } }
+                            }
+                        }
+                    });
+                }
+
+                return () => {
+                    if (buildingChartInstance) buildingChartInstance.destroy();
+                    if (stockChartInstance) stockChartInstance.destroy();
+                };
+            }, [rooms, medicines, stockSector, isDarkMode]);
+
+            return (
+                <div className="space-y-4 sm:space-y-6">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                            <span className="text-[11px] font-bold text-slate-400">TOTAL SANTRI</span>
+                            <h3 className="text-2xl sm:text-3xl font-black mt-1">{totalMahasantri}</h3>
+                        </div>
+                        <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                            <span className="text-[11px] font-bold text-amber-500">KONDISI SAKIT</span>
+                            <h3 className="text-2xl sm:text-3xl font-black mt-1 text-amber-500">{totalSick}</h3>
+                        </div>
+                        <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                            <span className="text-[11px] font-bold text-orange-500">REQ OBAT</span>
+                            <h3 className="text-2xl sm:text-3xl font-black mt-1 text-orange-500">{requests.filter(r => r.status === 'Menunggu').length}</h3>
+                        </div>
+                        <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                            <span className="text-[11px] font-bold text-purple-500">TIM ORKES</span>
+                            <h3 className="text-2xl sm:text-3xl font-black mt-1 text-purple-500">{staff.length}</h3>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className={`p-5 rounded-3xl border shadow-sm ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                            <h3 className="font-extrabold text-base">Rekap Sakit per Gedung</h3>
+                            <div className="chart-container my-3">
+                                <canvas ref={chartBuildingRef}></canvas>
+                            </div>
+                        </div>
+
+                        <div className={`p-5 rounded-3xl border shadow-sm ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                            <div className="flex justify-between items-center">
+                                <h3 className="font-extrabold text-base">Stok Apotek Sektor</h3>
+                                <div className="flex gap-1">
+                                    <button onClick={() => setStockSector("Putra")} className={`px-2 py-1 rounded text-xs font-bold ${stockSector === 'Putra' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Putra</button>
+                                    <button onClick={() => setStockSector("Putri")} className={`px-2 py-1 rounded text-xs font-bold ${stockSector === 'Putri' ? 'bg-pink-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Putri</button>
+                                </div>
+                            </div>
+                            <div className="chart-container my-3">
+                                <canvas ref={chartStockRef}></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function AdminRequestsView({ requests, onUpdateRequestStatus, onDeleteRequest, setConfirmModal, isDarkMode }) {
+            return (
+                <div className={`rounded-2xl border overflow-hidden shadow-sm ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                    <div className="overflow-x-auto custom-scrollbar">
+                        <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr className={`border-b font-bold ${isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                                    <th className="p-3">ID Order</th>
+                                    <th className="p-3">Mahasantri</th>
+                                    <th className="p-3">Obat & Jml</th>
+                                    <th className="p-3">Keluhan</th>
+                                    <th className="p-3">Status</th>
+                                    <th className="p-3 text-center">Aksi Admin</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                {requests.map(req => (
+                                    <tr key={req.id}>
+                                        <td className="p-3 font-mono font-bold text-teal-500">{req.id}</td>
+                                        <td className="p-3 font-bold">{req.name} ({req.nim})</td>
+                                        <td className="p-3 font-bold text-emerald-500">{req.medicineName} x{req.qty}</td>
+                                        <td className="p-3">{req.symptom}</td>
+                                        <td className="p-3 font-bold">{req.status}</td>
+                                        <td className="p-3 text-center">
+                                            {req.status === 'Menunggu' && (
+                                                <div className="flex justify-center gap-1">
+                                                    <button onClick={() => onUpdateRequestStatus(req.id, "Disetujui")} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold">Setujui</button>
+                                                    <button onClick={() => onUpdateRequestStatus(req.id, "Ditolak")} className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded font-bold">Tolak</button>
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        }
+
+        function CekmarView({ rooms, onEditMahasantri, onDeleteMahasantri, onResetAllToHealthy, setConfirmModal, isDarkMode }) {
+            return (
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center pb-2 border-b dark:border-slate-800">
+                        <h2 className="text-xl font-black">Data Kamar & Mahasantri (Cekmar)</h2>
+                        <button onClick={() => setConfirmModal({ title: "Reset Status", message: "Setel semua mahasantri menjadi SEHAT?", onConfirm: onResetAllToHealthy })} className="px-3.5 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs">
+                            Setel Semua Sehat
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {rooms.map(room => (
+                            <div key={room.id} className={`p-4 rounded-3xl border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                <h3 className="font-bold text-sm border-b pb-2">{room.building} - Kamar {room.roomNo}</h3>
+                                <div className="space-y-2 mt-2">
+                                    {room.occupants.map(mhs => (
+                                        <div key={mhs.id} className="flex justify-between items-center text-xs p-2.5 rounded-xl border dark:border-slate-700">
+                                            <div>
+                                                <div className="font-bold">{mhs.fullName || mhs.name}</div>
+                                                <div className="text-[10px] text-slate-400">{mhs.nim} · {mhs.major}</div>
+                                            </div>
+                                            <span className="px-2 py-0.5 rounded-full font-extrabold bg-emerald-500/20 text-emerald-400">{mhs.status}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function SebatView({ medicines, onAddMedicine, onEditMedicine, onDeleteMedicine, setConfirmModal, isDarkMode }) {
+            const [showAdd, setShowAdd] = useState(false);
+            const [name, setName] = useState("");
+            const [stock, setStock] = useState(10);
+            const [category, setCategory] = useState("Apotek Putra");
+
+            const handleAdd = (e) => {
+                e.preventDefault();
+                onAddMedicine({
+                    id: `OBT-${Math.floor(100 + Math.random() * 900)}`,
+                    name,
+                    category,
+                    form: "Tablet",
+                    stock: parseInt(stock, 10) || 0,
+                    desc: "Sediaan Obat Poskes Ma'had",
+                    expiryDate: "2027-12-31"
+                });
+                setShowAdd(false);
+                setName("");
+            };
+
+            return (
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center pb-2 border-b dark:border-slate-800">
+                        <h2 className="text-xl font-black">Stok Sediaan Obat (Sebat)</h2>
+                        <button onClick={() => setShowAdd(true)} className="px-3.5 py-2 bg-teal-600 text-white font-bold rounded-xl text-xs">
+                            + Tambah Obat
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {medicines.map(med => (
+                            <div key={med.id} className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-teal-500/10 text-teal-500">{med.category}</span>
+                                <h4 className="font-bold text-sm mt-1">{med.name}</h4>
+                                <p className="text-xs text-emerald-500 font-bold mt-2">Stok: {med.stock} {med.form}</p>
+                            </div>
+                        ))}
+                    </div>
+                    {showAdd && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            <div className="fixed inset-0 bg-slate-950/70" onClick={() => setShowAdd(false)}></div>
+                            <div className={`relative w-full max-w-md p-6 rounded-3xl z-10 space-y-3 ${isDarkMode ? 'bg-slate-800 text-white' : 'bg-white text-slate-800'}`}>
+                                <h3 className="font-bold text-base">Tambah Obat Baru</h3>
+                                <form onSubmit={handleAdd} className="space-y-3 text-xs">
+                                    <input type="text" placeholder="Nama Obat" value={name} onChange={(e) => setName(e.target.value)} required className={`w-full p-2.5 border rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white'}`} />
+                                    <select value={category} onChange={(e) => setCategory(e.target.value)} className={`w-full p-2.5 border rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white'}`}>
+                                        <option value="Apotek Putra">Apotek Putra</option>
+                                        <option value="Apotek Putri">Apotek Putri</option>
+                                    </select>
+                                    <input type="number" placeholder="Stok" value={stock} onChange={(e) => setStock(e.target.value)} required className={`w-full p-2.5 border rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white'}`} />
+                                    <div className="flex gap-2">
+                                        <button type="button" onClick={() => setShowAdd(false)} className="flex-1 py-2 border rounded-xl">Batal</button>
+                                        <button type="submit" className="flex-1 py-2 bg-teal-600 text-white rounded-xl font-bold">Simpan</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function ReportsView({ rooms, requests, isDarkMode }) {
+            return (
+                <div className="p-8 bg-white text-slate-900 rounded-3xl border border-slate-300 shadow-xl space-y-6 font-official max-w-4xl mx-auto">
+                    <div className="border-b-4 border-double border-slate-900 pb-3 text-center">
+                        <h1 className="text-base font-black tracking-wider uppercase">MA'HAD TAHFIZH AL-QURAN UIN SUNAN GUNUNG DJATI BANDUNG</h1>
+                        <h2 className="text-sm font-bold text-teal-800 uppercase">DEPARTEMEN OLAHRAGA DAN KESEHATAN (ORKES)</h2>
+                        <p className="text-xs">Jl. A.H. Nasution No. 105, Cibiru, Kota Bandung · WA Admin: +62 857-7609-1473</p>
+                    </div>
+                    <div className="text-center">
+                        <h3 className="text-base font-bold underline uppercase">LAPORAN REKAPITULASI KESEHATAN MAHASANTRI</h3>
+                    </div>
+                    <div className="text-xs space-y-2">
+                        <p><strong>Total Mahasantri:</strong> {rooms.reduce((acc, r) => acc + r.occupants.length, 0)} Santri</p>
+                        <p><strong>Jumlah Permintaan Obat:</strong> {requests.length} Permintaan</p>
+                    </div>
+                </div>
+            );
+        }
+
+        function StaffView({ staff, isDarkMode }) {
+            return (
+                <div className="space-y-4">
+                    <h2 className="text-xl font-black">Tim Kesehatan & ORKES</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {staff.map(st => (
+                            <div key={st.id} className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                <h4 className="font-bold text-sm">{st.name}</h4>
+                                <p className="text-xs text-teal-500 font-bold">{st.role} - {st.shift}</p>
+                                <p className="text-[11px] text-slate-400 mt-1"><i className="fa-solid fa-phone me-1"></i>{st.phone}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
